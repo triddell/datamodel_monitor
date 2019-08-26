@@ -1,0 +1,6 @@
+<nav search_view="search">
+  <view name="configure_datamodel" default="true"/>
+  <view name="search" />
+  <view name="reports" />
+  <view name="alerts" />
+</nav>

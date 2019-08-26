@@ -1,0 +1,37 @@
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: NuGetCommand@2
+  inputs:
+    command: custom
+    arguments: install GitVersion.CommandLine -Version 4.0.0 -OutputDirectory $(Build.BinariesDirectory)/tools -ExcludeVersion
+  displayName: 'Install GitVersion'
+
+- script: mono $(Build.BinariesDirectory)/tools/GitVersion.CommandLine/tools/GitVersion.exe /output buildserver /nofetch
+  displayName: 'Determine Version'
+
+- script: sed -i 's/$VERSION/$(GitVersion.NuGetVersion)/g' default/app.conf
+  displayName: 'Set Version in app.conf'
+
+- script: tar --exclude='azure-pipelines.yml' --exclude='.git' --exclude='.gitignore' --exclude='GitVersion.yml' --transform 's|^|/datamodel_monitor/|' -czf $(Build.ArtifactStagingDirectory)/datamodel_monitor_$(GitVersion.NuGetVersion).tgz .
+  displayName: 'Package App'
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Build Artifact'
+  inputs:
+    pathtoPublish: $(Build.ArtifactStagingDirectory)/datamodel_monitor_$(GitVersion.NuGetVersion).tgz
+    artifactName: 'datamodel_monitor'
+
+- task: GithubRelease@0 
+  displayName: 'Create GitHub Release'      
+  inputs:
+    gitHubConnection: triddell-Releases
+    repositoryName: triddell/datamodel_monitor
+    tagSource: manual
+    tag: $(GitVersion.NuGetVersion)      
+    assets: $(Build.ArtifactStagingDirectory)/*.tgz
+  condition: and(succeeded(), eq('true', variables['CUT_RELEASE']))

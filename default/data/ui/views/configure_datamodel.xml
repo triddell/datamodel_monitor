@@ -1,0 +1,53 @@
+<dashboard script="datamodel_configure.js" stylesheet="configure.css" hideEdit="true">
+  <label>Datamodel Monitor Rules</label>
+  <search id="addRow">
+    <query>| inputlookup datamodel_monitor | eval key=_key
+      | append [| stats count
+      | eval datamodel="$datamodel_add_tok$"
+      | eval field_value="$field_value_add_tok$"
+      | eval late_seconds="$late_secs_add_tok$"
+      | eval contact="$contact_add_tok$"
+      | eval comments="$comments_add_tok$"]
+      | table datamodel,field_value,late_seconds,contact,comments | outputlookup datamodel_monitor</query>
+  </search>
+  <search id="removeRow">
+    <query>| inputlookup datamodel_monitor | eval key=_key
+      | WHERE NOT key="$key_remove_tok$"
+      | outputlookup datamodel_monitor
+    </query>
+  </search>
+  <search id="updateRow">
+    <query>| inputlookup datamodel_monitor | eval key=_key
+      | WHERE key="$key_update_tok$"
+      | eval datamodel="$datamodel_update_tok$"
+      | eval field_value="$field_value_update_tok$"
+      | eval late_seconds="$late_secs_update_tok$"
+      | eval contact="$contact_update_tok$"
+      | eval comments="$comments_update_tok$"
+      | outputlookup datamodel_monitor append=t</query>
+  </search>
+  <row>
+    <panel id="lookupPanel">
+      <table id="lookupTable">
+        <search id="lookupSearch">
+          <query>| inputlookup datamodel_monitor
+            | eval Remove="Remove" | eval key=_key | eval Edit="Edit" | eval Clone="Clone"
+            | table * Edit, Clone, Remove
+          </query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="count">100</option>
+        <option name="fields">comments,contact,datamodel,field_value,late_seconds,Edit,Clone,Remove</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>
