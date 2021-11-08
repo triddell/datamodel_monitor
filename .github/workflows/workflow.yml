@@ -1,0 +1,40 @@
+name: datamodel_monitor
+on:
+  push:
+    branches:
+      - master
+jobs:
+  build-splunk-project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v0.9.7
+        with:
+          versionSpec: 5.x
+      - name: Execute GitVersion
+        uses: gittools/actions/gitversion/execute@v0.9.7
+        with:
+          useConfigFile: true
+          configFilePath: GitVersion.yml
+      - name: Update version in app.conf
+        run: sed -i "s/VERSION/$GITVERSION_SEMVER/g" default/app.conf
+      - name: Create tgz artifact
+        run: tar --transform 's|^|/datamodel_monitor/|' -czf "datamodel_monitor_$GITVERSION_SEMVER.tgz" appserver default metadata
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: datamodel_monitor_${{ env.GITVERSION_SEMVER }}
+          path: datamodel_monitor_${{ env.GITVERSION_SEMVER }}.tgz
+          retention-days: 2
+      - name: Create release
+        uses: ncipollo/release-action@v1
+        if: contains(github.event.head_commit.message, '; release')
+        with:
+          artifacts: datamodel_monitor_${{ env.GITVERSION_SEMVER }}.tgz
+          bodyFile: release/release.md
+          tag: v${{ env.GITVERSION_SEMVER }}
+          token: ${{ secrets.GITHUB_TOKEN }}
